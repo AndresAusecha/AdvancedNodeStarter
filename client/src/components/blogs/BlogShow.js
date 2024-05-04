@@ -24,6 +24,7 @@ class BlogShow extends Component {
 }
 
 function mapStateToProps({ blogs }, ownProps) {
+  console.log(blogs);
   return { blog: blogs[ownProps.match.params._id] };
 }
 
