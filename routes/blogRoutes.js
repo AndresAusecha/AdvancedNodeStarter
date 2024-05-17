@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const requireLogin = require('../middlewares/requireLogin');
 
 const Blog = mongoose.model('Blog');
+const { clearHash } = require('../services/cache');
 
 module.exports = app => {
   app.get('/api/blogs/:id', requireLogin, async (req, res) => {
@@ -14,24 +15,9 @@ module.exports = app => {
   });
 
   app.get('/api/blogs', requireLogin, async (req, res) => {
-    const redis = require("redis");
-    const redisClient = redis.createClient("redis://127.0.0.1:6379");
-    const util = require("util");
+    const blogs = await Blog.find({ _user: req.user.id }).cache({ key: req.user.id });
 
-    redisClient.get = util.promisify(redisClient.get);
-    const cachedBlogs = await redisClient.get(req.user.id);
-    console.log(cachedBlogs);
-
-    if (cachedBlogs) {
-      console.log("serving from cache")
-      return res.send(JSON.parse(cachedBlogs));
-    }
-
-    const blogs = await Blog.find({ _user: req.user.id });
-    redisClient.set(req.user.id, JSON.stringify(blogs));
-
-    console.log("Serving from mongoDB")
-    res.send(blogs);
+    res.send(blogs)
   });
 
   app.post('/api/blogs', requireLogin, async (req, res) => {
@@ -49,5 +35,7 @@ module.exports = app => {
     } catch (err) {
       res.send(400, err);
     }
+
+    clearHash(req.user.id);
   });
 };
